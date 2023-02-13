@@ -73,8 +73,8 @@ def inputProcess():
 	return (i)
 
 
-grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
-# grid = [] ##! Change back!
+# grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
+grid = [] ##! Change back!
 while grid == []:
 	print("Enter grid, one line at a time.")
 	print(
@@ -211,10 +211,10 @@ for key in wordsByLength.keys():
 	if len(wordsByLength[key]) > 0:
 		validLengths.append(key)
 
-letters = [
-    "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
-]
-# letters = []  ##! FIX TO EMPTY ARRAY
+# letters = [
+#     "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
+# ]
+letters = []  ##! FIX TO EMPTY ARRAY
 while letters == []:
 	ls = input("Enter usable letters\n").upper()
 	if len(ls) == len(gridSerialized):
@@ -424,7 +424,7 @@ def testSolution(i):
 			solutionsByStartingWord[s[0]].append(s)
 		else:
 			solutionsByStartingWord[s[0]] = [s]
-	elif i % 10000 == 0:  ##! Change back to 10,000!
+	elif i % 10000 == 0: 
 		et = time.time()
 		timeDelta = round(et - startTime)
 		prog = i / totalSolutions()
@@ -449,7 +449,8 @@ def testSolution(i):
 		      "(",
 		      its,
 		      "it/s)",
-		      flush=True)  ## Change end back to '\r'
+					end='\r',
+		      flush=True)
 
 
 def testAllSolutions():
@@ -463,6 +464,7 @@ testAllSolutions()
 # if __name__ == "__main__":
 # 	with multiprocessing.Pool(2) as pool:
 # 		results = pool.map(solutionIsValid, range(1000))
+
 
 print()
 print("Completed in", round(time.time() - startTime, 2), "seconds.")

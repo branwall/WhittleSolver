@@ -1,5 +1,5 @@
 import copy
-from itertools import permutations
+from itertools import permutations, repeat
 import json
 import math
 import multiprocessing
@@ -10,24 +10,33 @@ import time
 # Open the dictionary, set up filters to sort by length
 # -------------------------
 
-wordLists = {}
+grid = [] ##! Change back!
+letters = []  ##! FIX TO EMPTY ARRAY
+printEvery = 10000  ##! Reset to 10,000
+# grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
+# letters = [
+#     "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
+# ]
 
-# grid = [] ##! Change back!
-# letters = []  ##! FIX TO EMPTY ARRAY
-letters = [
-    "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
-]
-grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
+wordLists = {}
+## Grid stuff
 gridSerialized = []
 wordsSerialized = []
+wordsSerializedHorizontal = []
+wordsSerializedVertical = []
 overlaps = []
 overlappingWords = []
+
+## Length stuff
 wordsByLength = {2: [], 3: [], 4: [], 5: [], 6: []}
 validLengths = []
 letterDict = {}
 solutionsByStartingWord = {}
+startTime = time.time()
+
 
 def import_wordLists():
+	global wordLists
 	with open('reduced2.json') as wol2:
 		with open('reduced3.json') as wol3:
 			with open('reduced4.json') as wol4:
@@ -89,13 +98,12 @@ def inputProcess():
 	return (i)
 
 
-
-def ask_for_grid():
-	global grid
+def import_grid():
+	global grid, gridSerialized
 	while grid == []:
 		print("Enter grid, one line at a time.")
 		print(
-				"Use an o, O, or 0 for playable spaces.  Use an x or X for blocked spaces."
+		    "Use an o, O, or 0 for playable spaces.  Use an x or X for blocked spaces."
 		)
 		for n in range(6):
 			i = inputProcess()
@@ -105,9 +113,6 @@ def ask_for_grid():
 				grid = []
 				break
 
-
-
-def serialize_grid():
 	for i, line in enumerate(grid):
 		for j, letter in enumerate(line):
 			if letter == "O" or letter == "0":
@@ -135,8 +140,10 @@ def alreadyCaputred(coord, listOfWords):
 			return True
 	return False
 
+
 def serialize_words():
-	wordsSerializedHorizontal = []
+	global wordsSerialized, gridSerialized, wordsSerializedHorizontal, wordsSerializedVertical
+
 	for coord in gridSerialized:
 		if not alreadyCaputred(coord, wordsSerializedHorizontal):
 			terminalCoord = coord
@@ -147,7 +154,6 @@ def serialize_words():
 		else:
 			continue
 
-	wordsSerializedVertical = []
 	for coord in gridSerialized:
 		if not alreadyCaputred(coord, wordsSerializedVertical):
 			terminalCoord = coord
@@ -160,12 +166,14 @@ def serialize_words():
 
 	wordsSerialized = wordsSerializedHorizontal + wordsSerializedVertical
 
+
+def find_overlaps():
+	global overlaps, overlappingWords, gridSerialized, wordsSerializedVertical, wordsSerializedHorizontal, overlaps, wordsSerialized
 	for coord in gridSerialized:
 		if (alreadyCaputred(coord, wordsSerializedVertical)
-				and alreadyCaputred(coord, wordsSerializedHorizontal)):
+		    and alreadyCaputred(coord, wordsSerializedHorizontal)):
 			overlaps.append(coord)
 
-	
 	for overlapCoord in overlaps:
 		wordA = None
 		wordB = None
@@ -175,13 +183,13 @@ def serialize_words():
 			startCoord = wordRange[0]
 			endCoord = wordRange[1]
 			if (overlapCoord[0] >= startCoord[0] and overlapCoord[1] >= startCoord[1]
-					and overlapCoord[0] <= endCoord[0] and overlapCoord[1] <= endCoord[1]):
+			    and overlapCoord[0] <= endCoord[0] and overlapCoord[1] <= endCoord[1]):
 
 				# if the coordinate we're checking is contained in this word,
 				# make sure the letter in this word either matches the target,
 				# or set the target to the current word.
 				charIndex = max(overlapCoord[0] - startCoord[0],
-												overlapCoord[1] - startCoord[1])
+				                overlapCoord[1] - startCoord[1])
 				if wordA == None:
 					wordA = wordIndex
 					wordAIdx = charIndex
@@ -193,8 +201,7 @@ def serialize_words():
 		overlappingWords.append((wordA, wordAIdx, wordB, wordBIdx))
 
 
-def fastCheckOverlap(solution):
-	global overlappingWords
+def fastCheckOverlap(solution,overlappingWords):
 	for ol in overlappingWords:
 		wordA = ol[0]
 		wordB = ol[2]
@@ -202,6 +209,7 @@ def fastCheckOverlap(solution):
 		wordBIdx = ol[3]
 		if solution[wordA][wordAIdx] != solution[wordB][wordBIdx]:
 			return False
+		
 	return True
 
 
@@ -220,17 +228,18 @@ def getWordLength(word):
 		#if they're not in the same row, it's vertical.
 		return ec[0] - sc[0] + 1
 
-def process_lengths_of_words():
+
+def handleWordLengths():
+	global wordsSerialized, wordsByLength, validLengths
 	for word in wordsSerialized:
 		wordsByLength[getWordLength(word)].append(word)
-
-
 	for key in wordsByLength.keys():
 		if len(wordsByLength[key]) > 0:
 			validLengths.append(key)
 
-def process_letters():
-	global letters
+
+def handleLetters():
+	global letters, gridSerialized, letterDict
 	while letters == []:
 		ls = input("Enter usable letters\n").upper()
 		if len(ls) == len(gridSerialized):
@@ -238,17 +247,19 @@ def process_letters():
 		else:
 			print("Error: you entered the wrong number of letters")
 
-
 	for letter in letters:
 		if letter in letterDict:
 			letterDict[letter] += 1
 		else:
 			letterDict[letter] = 1
 
+
 # -------------------------
 # Cull the wordlist to only plausible solutions (right length; right letters).
 # -------------------------
-def count_dictionary():
+def cullWordlist():
+	global wordLists, letters
+
 	dt = 0
 	print("Full Dictionary Size:")
 	for key in wordLists.keys():
@@ -257,18 +268,16 @@ def count_dictionary():
 		print(key, ":", cl)
 	print("(", dt, "total )")
 
-
-def wordCouldBeValid(word, letters):
-	usableletters = copy.deepcopy(letters)
-	if len(word) not in validLengths:
-		return False
-	for letter in word.upper():
-		if letter not in usableletters:
+	def wordCouldBeValid(word, letters):
+		usableletters = copy.deepcopy(letters)
+		if len(word) not in validLengths:
 			return False
-		usableletters.remove(letter)
-	return True
+		for letter in word.upper():
+			if letter not in usableletters:
+				return False
+			usableletters.remove(letter)
+		return True
 
-def cull_dictionary():
 	deleteList = {2: [], 3: [], 4: [], 5: [], 6: []}
 	## Trim out unusable words
 	for i in range(5):
@@ -288,12 +297,11 @@ def cull_dictionary():
 	print("(", dt, "total )")
 
 
-def totalSolutions():
+def totalSolutions(wordsSerialized, wordLists):
 	n = 1
 	for word in wordsSerialized:
 		n = n * len(wordLists[getWordLength(word)])
 	return n
-
 
 
 # -------------------------
@@ -302,6 +310,7 @@ def totalSolutions():
 
 
 def printGrid():
+	global grid
 	for line in grid:
 		for char in line:
 			if char.upper() != "O" and char.upper() != "0":
@@ -311,7 +320,7 @@ def printGrid():
 		print()
 
 
-def letterAtCoord(coord, solution):
+def letterAtCoord(coord, solution, wordsSerialized):
 	for wordIndex, wordRange in enumerate(wordsSerialized):
 		startCoord = wordRange[0]
 		endCoord = wordRange[1]
@@ -327,12 +336,12 @@ def letterAtCoord(coord, solution):
 	return ("▩")
 
 
-def prettyPrint(solution):
+def prettyPrint(solution, wordsSerialized):
 	#For every spot on the grid . . .
 	for line in range(6):
 		for column in range(5):
 			coord = (line, column)
-			print(letterAtCoord(coord, solution), " ", end='')
+			print(letterAtCoord(coord, solution, wordsSerialized), " ", end='')
 		print()
 		sys.stdout.flush()
 	print("***************")
@@ -344,30 +353,9 @@ def prettyPrint(solution):
 # -------------------------
 
 
-def checkCoordConsistency(coord, solution):
-	target = ""
-	for wordIndex, wordRange in enumerate(wordsSerialized):
-		startCoord = wordRange[0]
-		endCoord = wordRange[1]
-		if (coord[0] >= startCoord[0] and coord[1] >= startCoord[1]
-		    and coord[0] <= endCoord[0] and coord[1] <= endCoord[1]):
-			# if the coordinate we're checking is contained in this word,
-			# make sure the letter in this word either matches the target,
-			# or set the target to the current word.
-			charIndex = max(coord[0] - startCoord[0], coord[1] - startCoord[1])
-			if target == "":
-				target = solution[wordIndex][charIndex]
-			else:
-				if target != solution[wordIndex][charIndex]:
-					return False
-	else:
-		return True
-
-
-def solutionIsValid(solution):
+def solutionIsValid(solution, letterDict, wordsSerialized,overlaps,overlappingWords):
 	lettersInSolution = {}
-
-	if not fastCheckOverlap(solution):
+	if not fastCheckOverlap(solution, overlappingWords):
 		return False
 
 	for word in solution:
@@ -378,20 +366,17 @@ def solutionIsValid(solution):
 				lettersInSolution[char] = 1
 
 	for coord in overlaps:
-		lettersInSolution[letterAtCoord(coord, solution)] -= 1
+		lettersInSolution[letterAtCoord(coord, solution, wordsSerialized)] -= 1
 
 	for key, value in lettersInSolution.items():
 		if letterDict[key] != value:
 			return False
-
-	prettyPrint(solution)
+	# prettyPrint(solution, wordsSerialized)
 	return True
 
 
-
-
-
-def getSolutionNumber(i):
+def getSolutionNumber(i, wordsSerialized, wordLists):
+	# return ['TUBA', 'HARP', 'GUITAR', 'BASS']  ##! Delete tis line
 	solutionWords = []
 	for slot in reversed(wordsSerialized):
 		length = getWordLength(slot)
@@ -406,44 +391,17 @@ def getSolutionNumber(i):
 	return list(reversed(solutionWords))
 
 
-
-
-# def testSolutionRecursively(wordsSoFar = [],slotNo = 0):
-# 	if wordsSoFar != [] and (len(wordsSoFar) == len(wordsSerialized)):
-# 		if solutionIsValid(wordsSoFar):
-# 			if wordsSoFar[0] in solutionsByStartingWord:
-# 				solutionsByStartingWord[wordsSoFar[0]].append(wordsSoFar)
-# 			else:
-# 				solutionsByStartingWord[wordsSoFar[0]] = [wordsSoFar]
-# 			return True
-# 		return solutionIsValid(wordsSoFar)
-# 	else:
-# 		length = getWordLength(wordsSerialized[slotNo])
-# 		for testWord in wordLists[length]:
-# 			if slotNo == 0:
-# 				endTime = time.time()
-# 				pct = list(wordLists[length]).index(testWord)/len(wordLists[length])*100
-# 				print("Testing",testWord,"as the starting word. ",round(pct,2),"%",end=' *** ')
-# 				if pct>0 and endTime>startTime:
-# 					print("Elapsed: ",endTime-startTime,"ETC: ",round((endTime-startTime)/(pct/100),0)-round(endTime-startTime,0),"seconds.")
-# 				else:
-# 					print("")
-# 			newWordsToTest = copy.deepcopy(wordsSoFar)
-# 			newWordsToTest.append(testWord)
-# 			testSolutionRecursively(newWordsToTest,slotNo+1)
-
-
-def testSolution(i):
-	s = getSolutionNumber(i)
-	if solutionIsValid(s):
-		if s[0] in solutionsByStartingWord:
-			solutionsByStartingWord[s[0]].append(s)
-		else:
-			solutionsByStartingWord[s[0]] = [s]
-	elif i % 1 == 0:  ##! Change back to 10,000!
+def testSolution(i, args):
+	wordsSerialized = args[0]
+	wordLists = args[1]
+	letterDict = args[2]
+	overlaps = args[3]
+	overlappingWords = args[4]
+	s = getSolutionNumber(i, wordsSerialized, wordLists)
+	if i % printEvery == 0:
 		et = time.time()
 		timeDelta = round(et - startTime)
-		prog = i / totalSolutions()
+		prog = i / totalSolutions(wordsSerialized, wordLists)
 		pct = round(100 * prog, 2)
 		etc = round(timeDelta / max(prog, 0.0000000000001) - timeDelta)
 		etcStr = "{:,}".format(etc)
@@ -465,34 +423,60 @@ def testSolution(i):
 		      "(",
 		      its,
 		      "it/s)",
-		      flush=True)  ## Change end back to '\r'
-
-
-def testAllSolutions():
-	ts = totalSolutions()
-	for i in range(ts):
-		testSolution(i)
-
+		      end='\r',
+		      flush=True)
+	if solutionIsValid(s, letterDict, wordsSerialized,overlaps,overlappingWords):
+		return s
+	else:
+		return None
 
 
 if __name__ == "__main__":
 	import_wordLists()
-	ask_for_grid()
-	serialize_grid()
+	import_grid()
 	serialize_words()
-	process_lengths_of_words()
-	process_letters()
-	count_dictionary()
-	cull_dictionary()
-	print("Permutations to test:", "{:,}".format(totalSolutions()))
+	find_overlaps()
+	handleWordLengths()
+	handleLetters()
+	cullWordlist()
+	startTime = time.time()
 
-	#testAllSolutions()
-	#startTime = time.time()
+	
+	print("Permutations to test:",
+	      "{:,}".format(totalSolutions(wordsSerialized, wordLists)))
 
-	# with multiprocessing.Pool(2) as pool:
-	# 	results = pool.map(solutionIsValid, range(10))
+	
+	
 
-print()
-#print("Completed in", round(time.time() - startTime, 2), "seconds.")
-for s in solutionsByStartingWord.items():
-	print(s)
+	with multiprocessing.Pool(15) as pool:
+		ts = totalSolutions(wordsSerialized, wordLists)
+		args = (wordsSerialized, wordLists, letterDict,overlaps,overlappingWords)
+		results = pool.starmap(testSolution, zip(range(ts), repeat(args)))
+		# for idx in range(ts):
+		# 	results[idx] = (pool.apply_async(testSolution,args=(idx,args)))
+		# 	pass
+
+	
+	print()
+	print("Completed in", round(time.time() - startTime, 2), "seconds.")
+	time.sleep(1)
+	all_solutions = [r for r in results if r != None]
+	print("Solutions (",len(all_solutions),")")
+	time.sleep(1)
+	for sol in all_solutions:
+		prettyPrint(sol, wordsSerialized)
+	
+	sbsw = {}
+	for sol in all_solutions:
+		if sol[0] in sbsw:
+			sbsw[sol[0]].append(sol)
+		else:
+			sbsw[sol[0]] = [sol]
+	print()
+	
+
+	for key,value in sbsw.items():
+		print(key.upper())
+		for sol in value:
+			print('\t\t',sol)
+		print()
