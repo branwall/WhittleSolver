@@ -3,8 +3,10 @@ from itertools import permutations, repeat
 import json
 import math
 import multiprocessing
+import os
 import sys
 import time
+import solution_recommender
 
 # -------------------------
 # Open the dictionary, set up filters to sort by length
@@ -20,6 +22,7 @@ printEvery = 10000  ##! Reset to 10,000
 
 wordLists = {}
 ## Grid stuff
+pulledFromFile = False
 gridSerialized = []
 wordsSerialized = []
 wordsSerializedHorizontal = []
@@ -91,6 +94,8 @@ def len6(pair):
 
 def inputProcess():
 	i = input().upper()
+	if i == "LAST":
+		return i
 	for ch in i:
 		if len(i) != 5 or ((ch != "X") and (ch != "O") and (ch != "0")):
 			print("Error: invalid input. Please start over.")
@@ -98,21 +103,62 @@ def inputProcess():
 	return (i)
 
 
+
+def get_obj_from_file(letters = False):
+	global pulledFromFile
+	if letters:
+		if not os.path.exists("lastLetters"):
+			print("No previous input found.")
+			return None
+		with open("lastLetters") as li:
+			j = json.loads((li.read()))
+			li.close()
+			return j
+	else:
+		if not os.path.exists("lastGrid"):
+			print("No previous input found.")
+			return None
+		with open("lastGrid") as li:
+			j = json.loads((li.read()))
+			li.close()
+			pulledFromFile = True
+			return j
+	
+
+def save_obj_to_file(obj,letters=False):
+	if letters:
+		with open("lastLetters","w") as li:
+			j = json.dump(obj,li)
+			li.close()
+	else:
+		with open("lastGrid","w") as li:
+			j = json.dump(obj,li)
+			li.close()
+
+
+
 def import_grid():
 	global grid, gridSerialized
+	print('Enter grid, one line at a time, or enter "LAST" to use a the grid and letters you entered previously.')
 	while grid == []:
-		print("Enter grid, one line at a time.")
 		print(
 		    "Use an o, O, or 0 for playable spaces.  Use an x or X for blocked spaces."
 		)
 		for n in range(6):
 			i = inputProcess()
-			if i:
+			if i == "LAST":
+				grid = get_obj_from_file()
+				if grid == None:
+					grid = []
+					break
+				else:
+					break
+			elif i:
 				grid.append(i)
 			else:
 				grid = []
 				break
-
+	save_obj_to_file(grid)
 	for i, line in enumerate(grid):
 		for j, letter in enumerate(line):
 			if letter == "O" or letter == "0":
@@ -240,12 +286,16 @@ def handleWordLengths():
 
 def handleLetters():
 	global letters, gridSerialized, letterDict
-	while letters == []:
-		ls = input("Enter usable letters\n").upper()
-		if len(ls) == len(gridSerialized):
-			letters = [*ls]
-		else:
-			print("Error: you entered the wrong number of letters")
+	if pulledFromFile:
+		letters = get_obj_from_file(True)
+	else:
+		while letters == []:
+			ls = input("Enter usable letters\n").upper()
+			if len(ls) == len(gridSerialized):
+				letters = [*ls]
+			else:
+				print("Error: you entered the wrong number of letters")
+		save_obj_to_file(letters,True)
 
 	for letter in letters:
 		if letter in letterDict:
@@ -318,6 +368,39 @@ def printGrid():
 			else:
 				print("▢ ", end='')
 		print()
+
+def timeString(timeD):
+	h,rem = divmod(round(timeD), 3600)
+	m,s = divmod(rem,60)
+	if h < 10 and h != 0:
+		h = "0"+str(h)
+	if h==0:
+		h = ""
+	if m<10 and m!=0:
+		m = "0"+str(m)
+	if s<10:
+		s = "0"+str(s)
+	if h != "":
+		return (str(h)+":"+str(m)+":"+str(s))
+	else:
+		return (str(m)+":"+str(s))
+
+
+def emojiGrid(timeD):
+	global grid
+	emojistr = "Whittle #_ ("
+	emojistr += timeString(timeD)
+	emojistr += ")\n"
+	for line in grid:
+		for char in line:
+			if char.upper() != "O" and char.upper() != "0":
+				emojistr += "⬛"
+			else:
+				emojistr += "🟥"
+		emojistr += "\n"
+	print(emojistr)
+	
+
 
 
 def letterAtCoord(coord, solution, wordsSerialized):
@@ -456,9 +539,10 @@ if __name__ == "__main__":
 		# 	results[idx] = (pool.apply_async(testSolution,args=(idx,args)))
 		# 	pass
 
+	et = time.time()
 	
 	print()
-	print("Completed in", round(time.time() - startTime, 2), "seconds.")
+	print("Completed in", round(et - startTime, 2), "seconds.")
 	time.sleep(1)
 	all_solutions = [r for r in results if r != None]
 	print("Solutions (",len(all_solutions),")")
@@ -479,4 +563,20 @@ if __name__ == "__main__":
 		print(key.upper())
 		for sol in value:
 			print('\t\t',sol)
+		print()
+
+	emojiGrid(et-startTime)
+
+	print("Scoring solutions by likelihood of comprising theme answers")
+	with multiprocessing.Pool() as p:
+		scores = p.map(solution_recommender.score_solution,all_solutions)
+	scoredSolutions = {}
+	for i,sol in enumerate(all_solutions):
+		scoredSolutions[str(sol)] = scores[i]
+	print()
+	sortedSolutions = sorted( ((v,k) for k,v in scoredSolutions.items()), reverse=True)
+	for s in sortedSolutions:
+		print(round(s[0],2),":\t",end='')
+		for w in s[1].strip('][').split(', '):
+			print(w.upper(),'  ',end = '')
 		print()
