@@ -58,18 +58,16 @@ def score_solution(solution):
 			definition = definition.items()
 			if len(list(definition)) > 0 and len(list(definition)[0]) > 0 and len(
 			    list(definition)[0][1]) > 0:
-				for sense in list(definition):
-					for meaning in sense[1]:
+				for part_of_speech in list(definition):
+					for meaning in part_of_speech[1]:
 						for definitionWord in meaning.split():
 							if definitionWord not in banned_words:
 								localWordNet[definitionWord] = 1
-				# print("local wordnet for",word,"is",localWordNet)
 				for key in list(localWordNet.keys()):
 					if key in wordNet:
 						wordNet[key] += 1
 					else:
 						wordNet[key] = 1
-				# print("new, full wordnet looks like",wordNet)
 	score = 0
 	for count in wordNet.values():
 		score += count
