@@ -2,6 +2,7 @@ from PyDictionary import PyDictionary
 
 d = PyDictionary()
 banned_words = {
+    "a": 1,
     "of": 1,
     "to": 1,
     "in": 1,
@@ -45,13 +46,30 @@ banned_words = {
     "have": 1,
     "more": 1,
     "will": 1,
+    "having": 1,
 }
 
 
-def score_solution(solution):
-	# print("\rScoring",solution, end = '\r')
+def score_solution(solution, wordLists=None):
+	
+	score = 0
 	wordNet = {}
 	for word in solution:
+		if wordLists != None:
+
+			wordlist = list(
+			    wordLists[len(word)].keys())  
+			firstThird = wordlist[:int(len(wordlist) / 3)]
+			secondThird = wordlist[int(len(wordlist) / 3):int(2 * len(wordlist) / 3)]
+			thirdThird = wordlist[int(2 * len(wordlist) / 3):]
+
+			if word in firstThird:
+				score += 4
+			elif word in secondThird:
+				score += 1
+			elif word in thirdThird:
+				score += 0
+
 		localWordNet = {}
 		definition = d.meaning(word, disable_errors=True)
 		if definition != None:
@@ -68,14 +86,10 @@ def score_solution(solution):
 						wordNet[key] += 1
 					else:
 						wordNet[key] = 1
-	score = 0
-	for count in wordNet.values():
+	wordnet_reduced = {k:(v*v) for (k,v) in wordNet.items() if v >= 2}
+
+	# print(solution, wordnet_reduced)
+	for count in wordnet_reduced.values():
 		score += count
-	if len(list(wordNet.values())) != 0:
-		score /= len(list(wordNet.values()))
-	else:
-		score = 1
-	
-	score -= 1
-	score *= 100
 	return score
+

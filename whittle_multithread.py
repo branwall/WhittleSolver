@@ -14,7 +14,7 @@ import solution_recommender
 
 grid = [] ##! Change back!
 letters = []  ##! FIX TO EMPTY ARRAY
-printEvery = 10000  ##! Reset to 10,000
+printEvery = 100000  ##! Reset to 10,000
 # grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
 # letters = [
 #     "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
@@ -569,7 +569,7 @@ if __name__ == "__main__":
 
 	print("Scoring solutions by likelihood of comprising theme answers")
 	with multiprocessing.Pool() as p:
-		scores = p.map(solution_recommender.score_solution,all_solutions)
+		scores = p.starmap(solution_recommender.score_solution,zip(all_solutions,repeat(wordLists)))
 	scoredSolutions = {}
 	for i,sol in enumerate(all_solutions):
 		scoredSolutions[str(sol)] = scores[i]
