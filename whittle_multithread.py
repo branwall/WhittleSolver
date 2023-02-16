@@ -3,10 +3,11 @@ from itertools import permutations, repeat
 import json
 import math
 import multiprocessing
+from operator import itemgetter
 import os
 import sys
 import time
-import solution_recommender
+import solutions_cached
 
 # -------------------------
 # Open the dictionary, set up filters to sort by length
@@ -569,14 +570,30 @@ if __name__ == "__main__":
 
 	print("Scoring solutions by likelihood of comprising theme answers")
 	with multiprocessing.Pool() as p:
-		scores = p.starmap(solution_recommender.score_solution,zip(all_solutions,repeat(wordLists)))
+		scores = p.starmap(solutions_cached.score_solution,zip(all_solutions,repeat(wordLists)))
+	
 	scoredSolutions = {}
+	solutionDefWords = {}
 	for i,sol in enumerate(all_solutions):
-		scoredSolutions[str(sol)] = scores[i]
+		scoredSolutions[str(sol)] = scores[i][0]
+		solutionDefWords[str(sol)] = scores[i][1]
+
 	print()
+	
+
 	sortedSolutions = sorted( ((v,k) for k,v in scoredSolutions.items()), reverse=True)
 	for s in sortedSolutions:
-		print(round(s[0],2),":\t",end='')
-		for w in s[1].strip('][').split(', '):
-			print(w.upper(),'  ',end = '')
+		print(str(round(s[0],2))+":\t",end='')
+		solStrWords = s[1].strip('][').split(', ')
+		olWords = solutionDefWords[s[1]]
+		for w in solStrWords[:-1]:
+			print(w.upper().strip("'") +', ',end = '')
+		print(solStrWords[-1].upper().strip("'"), end = '')
+		if len(olWords) >0:
+			print('\t(',end = '')
+			for ww in olWords[:-1]:
+				print (ww,end=', ')
+			print(olWords[-1],end=")")
 		print()
+
+	print("Best Guess:", max(sortedSolutions, key=itemgetter(0))[1])
