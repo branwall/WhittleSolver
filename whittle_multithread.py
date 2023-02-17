@@ -39,13 +39,14 @@ solutionsByStartingWord = {}
 startTime = time.time()
 
 
-def import_wordLists():
+def import_wordLists(reduced = True):
+	prepend = 'reduced' if reduced else ''
 	global wordLists
-	with open('reduced2.json') as wol2:
-		with open('reduced3.json') as wol3:
-			with open('reduced4.json') as wol4:
-				with open('reduced5.json') as wol5:
-					with open('reduced6.json') as wol6:
+	with open(prepend + '2.json') as wol2:
+		with open(prepend + '3.json') as wol3:
+			with open(prepend + '4.json') as wol4:
+				with open(prepend + '5.json') as wol5:
+					with open(prepend + '6.json') as wol6:
 						wordLists[2] = json.load(wol2)
 						wordLists[3] = json.load(wol3)
 						wordLists[4] = json.load(wol4)
@@ -460,7 +461,6 @@ def solutionIsValid(solution, letterDict, wordsSerialized,overlaps,overlappingWo
 
 
 def getSolutionNumber(i, wordsSerialized, wordLists):
-	# return ['TUBA', 'HARP', 'GUITAR', 'BASS']  ##! Delete tis line
 	solutionWords = []
 	for slot in reversed(wordsSerialized):
 		length = getWordLength(slot)
@@ -532,13 +532,10 @@ if __name__ == "__main__":
 	
 	
 
-	with multiprocessing.Pool(15) as pool:
+	with multiprocessing.Pool() as pool:  ##! Maybe fix at 15?
 		ts = totalSolutions(wordsSerialized, wordLists)
 		args = (wordsSerialized, wordLists, letterDict,overlaps,overlappingWords)
 		results = pool.starmap(testSolution, zip(range(ts), repeat(args)))
-		# for idx in range(ts):
-		# 	results[idx] = (pool.apply_async(testSolution,args=(idx,args)))
-		# 	pass
 
 	et = time.time()
 	
@@ -550,6 +547,41 @@ if __name__ == "__main__":
 	time.sleep(1)
 	for sol in all_solutions:
 		prettyPrint(sol, wordsSerialized)
+
+	### Duplicating the method from above, but now solving with the full wordlist.
+	if len(all_solutions) == 0:
+		print("Failed to solve using the reduced list.  Trying again with everything!")
+		import_wordLists(False)
+		import_grid()
+		serialize_words()
+		find_overlaps()
+		handleWordLengths()
+		handleLetters()
+		cullWordlist()
+
+		print("Permutations to test:",
+					"{:,}".format(totalSolutions(wordsSerialized, wordLists)))
+
+
+		with multiprocessing.Pool() as pool: 
+			ts = totalSolutions(wordsSerialized, wordLists)
+			args = (wordsSerialized, wordLists, letterDict,overlaps,overlappingWords)
+			results = pool.starmap(testSolution, zip(range(ts), repeat(args)))
+
+		et = time.time()
+		
+		print()
+		print("Completed in", round(et - startTime, 2), "seconds.")
+		time.sleep(1)
+		all_solutions = [r for r in results if r != None]
+		print("Solutions (",len(all_solutions),")")
+		time.sleep(1)
+		for sol in all_solutions:
+			prettyPrint(sol, wordsSerialized)
+		
+	### End chunk of duplicated code.  Now we can assume all_solutions has something in it.
+
+
 	
 	sbsw = {}
 	for sol in all_solutions:
