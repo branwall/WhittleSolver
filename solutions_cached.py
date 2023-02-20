@@ -45,11 +45,13 @@ banned_words = {
     "your": 1,
     "have": 1,
     "more": 1,
-		"some": 1,
-		"very": 1,
+    "some": 1,
+    "very": 1,
+    "used": 1,
+    "who": 1,
     "will": 1,
     "having": 1,
-		"usually": 1
+    "usually": 1
 }
 
 
@@ -63,9 +65,8 @@ def prettyPrintSolutionScore(solution, score, overlappingDefinitionWords):
 		out += "("
 		for word in overlappingDefinitionWords[:-1]:
 			out += word + ", "
-		out += overlappingDefinitionWords[-1] +")"
+		out += overlappingDefinitionWords[-1] + ")"
 	return out
-		
 
 
 def score_solution(solution, wordLists=None):
@@ -110,4 +111,43 @@ def score_solution(solution, wordLists=None):
 
 	# pps = prettyPrintSolutionScore(solution, score, overlappingDefWords)
 	return (score, overlappingDefWords)
+
+
+scrabbles = {
+    'a': 1,
+    'b': 3,
+    'c': 3,
+    'd': 2,
+    'e': 1,
+    'f': 4,
+    'g': 2,
+    'h': 4,
+    'i': 1,
+    'j': 8,
+    'k': 5,
+    'l': 1,
+    'm': 3,
+    'n': 1,
+    'o': 1,
+    'p': 3,
+    'q': 10,
+    'r': 1,
+    's': 1,
+    't': 1,
+    'u': 1,
+    'v': 8,
+    'w': 4,
+    'x': 8,
+    'y': 4,
+    'z': 10
+}
+
+
+def scrabble_score_solution(solution):
+	score = 0
+	all_words = {}
+	for word in solution:
+		for letter in word:
+			score += scrabbles[letter]
+	return (score)
 

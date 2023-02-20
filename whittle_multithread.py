@@ -13,16 +13,12 @@ import solutions_cached
 # Open the dictionary, set up filters to sort by length
 # -------------------------
 
-grid = [] ##! Change back!
-letters = []  ##! FIX TO EMPTY ARRAY
-printEvery = 100000  ##! Reset to 10,000
-# grid = ['XXOXO', 'XOOOO', 'XXOXO', 'XXOXO', 'XXOXX', 'OOOOX']
-# letters = [
-#     "I", "A", "B", "G", "T", "A", "P", "T", "S", "U", "R", "B", "S", "A", "H"
-# ]
+grid = []
+letters = []
+printEvery = 100000
 
 wordLists = {}
-## Grid stuff
+## Grid globals
 pulledFromFile = False
 gridSerialized = []
 wordsSerialized = []
@@ -31,7 +27,7 @@ wordsSerializedVertical = []
 overlaps = []
 overlappingWords = []
 
-## Length stuff
+## Length globals
 wordsByLength = {2: [], 3: [], 4: [], 5: [], 6: []}
 validLengths = []
 letterDict = {}
@@ -39,7 +35,7 @@ solutionsByStartingWord = {}
 startTime = time.time()
 
 
-def import_wordLists(reduced = True):
+def import_wordLists(reduced=True):
 	prepend = 'reduced' if reduced else ''
 	global wordLists
 	with open(prepend + '2.json') as wol2:
@@ -54,47 +50,17 @@ def import_wordLists(reduced = True):
 						wordLists[6] = json.load(wol6)
 
 
-def len2(pair):
-	key, value = pair
-	if len(key) != 2:
-		return False
-	return True
-
-
-def len3(pair):
-	key, value = pair
-	if len(key) != 3:
-		return False
-	return True
-
-
-def len4(pair):
-	key, value = pair
-	if len(key) != 4:
-		return False
-	return True
-
-
-def len5(pair):
-	key, value = pair
-	if len(key) != 5:
-		return False
-	return True
-
-
-def len6(pair):
-	key, value = pair
-	if len(key) != 6:
-		return False
-	return True
-
-
 # -------------------------
 # Collect the grid from user; process it to identify what words we need to create
 # -------------------------
 
 
 def inputProcess():
+	"""Receives one line of grid as input and checks for validity.
+
+	Returns:
+			Formatted string (or 'LAST') when input was valid. Else, returns False.
+	"""
 	i = input().upper()
 	if i == "LAST":
 		return i
@@ -105,8 +71,15 @@ def inputProcess():
 	return (i)
 
 
+def get_obj_from_file(letters=False):
+	"""Returns the last used grid or set of letters.
 
-def get_obj_from_file(letters = False):
+	Args:
+			letters (bool, optional): Whether to pull from the lastLetters file or not. Defaults to False.
+
+	Returns:
+			Either a grid object (array of strings) or a letters object (array of 1-char strings)
+	"""
 	global pulledFromFile
 	if letters:
 		if not os.path.exists("lastLetters"):
@@ -125,23 +98,34 @@ def get_obj_from_file(letters = False):
 			li.close()
 			pulledFromFile = True
 			return j
-	
 
-def save_obj_to_file(obj,letters=False):
+
+def save_obj_to_file(obj, letters=False):
+	"""Saves the user-inputted grid or letters to file for future use.
+
+	Args:
+			obj ([Str]): Either the active grid, or active list of letters.
+			letters (bool, optional): Whether this object is letters. Defaults to False.
+	"""
 	if letters:
-		with open("lastLetters","w") as li:
-			j = json.dump(obj,li)
+		with open("lastLetters", "w") as li:
+			j = json.dump(obj, li)
 			li.close()
 	else:
-		with open("lastGrid","w") as li:
-			j = json.dump(obj,li)
+		with open("lastGrid", "w") as li:
+			j = json.dump(obj, li)
 			li.close()
-
 
 
 def import_grid():
+	"""Gets a grid via user input or file, writes it to globals.
+
+	If user enters "last", it will pull from file.  Else, reads user input to format and serialize the grid.
+	"""
 	global grid, gridSerialized
-	print('Enter grid, one line at a time, or enter "LAST" to use a the grid and letters you entered previously.')
+	print(
+	    'Enter grid, one line at a time, or enter "LAST" to use a the grid and letters you entered previously.'
+	)
 	while grid == []:
 		print(
 		    "Use an o, O, or 0 for playable spaces.  Use an x or X for blocked spaces."
@@ -216,6 +200,18 @@ def serialize_words():
 
 
 def find_overlaps():
+	"""Returns a list of grid coordinates that are part of more than one word.
+
+	Using the global grid and word variables (where "word" refers to a contiguous chunk of playable squares),
+	walks through every playable square and sees whether it belongs to more than one word.  If so, there are overlapping words,
+	and both words need to be checked at this index when testing a potential solution.
+
+	Returns (Index of Word A in which the coord appears, the index within Word A in which that letter appears,
+					Index of Word B in which the coord appears, the index within Word B in which that letter appears)
+
+	Raises:
+			Exception when it can't find the word belonging to a given coordinate - shouldn't ever occur with a valid grid.
+	"""
 	global overlaps, overlappingWords, gridSerialized, wordsSerializedVertical, wordsSerializedHorizontal, overlaps, wordsSerialized
 	for coord in gridSerialized:
 		if (alreadyCaputred(coord, wordsSerializedVertical)
@@ -249,7 +245,7 @@ def find_overlaps():
 		overlappingWords.append((wordA, wordAIdx, wordB, wordBIdx))
 
 
-def fastCheckOverlap(solution,overlappingWords):
+def fastCheckOverlap(solution, overlappingWords):
 	for ol in overlappingWords:
 		wordA = ol[0]
 		wordB = ol[2]
@@ -257,7 +253,7 @@ def fastCheckOverlap(solution,overlappingWords):
 		wordBIdx = ol[3]
 		if solution[wordA][wordAIdx] != solution[wordB][wordBIdx]:
 			return False
-		
+
 	return True
 
 
@@ -297,7 +293,7 @@ def handleLetters():
 				letters = [*ls]
 			else:
 				print("Error: you entered the wrong number of letters")
-		save_obj_to_file(letters,True)
+		save_obj_to_file(letters, True)
 
 	for letter in letters:
 		if letter in letterDict:
@@ -371,21 +367,22 @@ def printGrid():
 				print("▢ ", end='')
 		print()
 
+
 def timeString(timeD):
-	h,rem = divmod(round(timeD), 3600)
-	m,s = divmod(rem,60)
+	h, rem = divmod(round(timeD), 3600)
+	m, s = divmod(rem, 60)
 	if h < 10 and h != 0:
-		h = "0"+str(h)
-	if h==0:
+		h = "0" + str(h)
+	if h == 0:
 		h = ""
-	if m<10 and m!=0:
-		m = "0"+str(m)
-	if s<10:
-		s = "0"+str(s)
+	if m < 10 and m != 0:
+		m = "0" + str(m)
+	if s < 10:
+		s = "0" + str(s)
 	if h != "":
-		return (str(h)+":"+str(m)+":"+str(s))
+		return (str(h) + ":" + str(m) + ":" + str(s))
 	else:
-		return (str(m)+":"+str(s))
+		return (str(m) + ":" + str(s))
 
 
 def emojiGrid(timeD):
@@ -401,8 +398,6 @@ def emojiGrid(timeD):
 				emojistr += "🟥"
 		emojistr += "\n"
 	print(emojistr)
-	
-
 
 
 def letterAtCoord(coord, solution, wordsSerialized):
@@ -438,7 +433,8 @@ def prettyPrint(solution, wordsSerialized):
 # -------------------------
 
 
-def solutionIsValid(solution, letterDict, wordsSerialized,overlaps,overlappingWords):
+def solutionIsValid(solution, letterDict, wordsSerialized, overlaps,
+                    overlappingWords):
 	lettersInSolution = {}
 	if not fastCheckOverlap(solution, overlappingWords):
 		return False
@@ -509,14 +505,19 @@ def testSolution(i, args):
 		      "it/s)",
 		      end='\r',
 		      flush=True)
-	if solutionIsValid(s, letterDict, wordsSerialized,overlaps,overlappingWords):
+	if solutionIsValid(s, letterDict, wordsSerialized, overlaps,
+	                   overlappingWords):
 		return s
 	else:
 		return None
 
 
 if __name__ == "__main__":
-	import_wordLists()
+	useReducedWordlist = True
+	for arg in sys.argv:
+		if arg == "--full" or arg == "-full":
+			useReducedWordlist = False
+	import_wordLists(useReducedWordlist)
 	import_grid()
 	serialize_words()
 	find_overlaps()
@@ -525,64 +526,30 @@ if __name__ == "__main__":
 	cullWordlist()
 	startTime = time.time()
 
-	
+	if useReducedWordlist:
+		print("Using a reduced wordbank to optimize efficiency.")
+	else:
+		print("Using complete wordbank to definitively get the answer.")
+
 	print("Permutations to test:",
 	      "{:,}".format(totalSolutions(wordsSerialized, wordLists)))
 
-	
-	
-
-	with multiprocessing.Pool() as pool:  ##! Maybe fix at 15?
+	with multiprocessing.Pool() as pool:
 		ts = totalSolutions(wordsSerialized, wordLists)
-		args = (wordsSerialized, wordLists, letterDict,overlaps,overlappingWords)
+		args = (wordsSerialized, wordLists, letterDict, overlaps, overlappingWords)
 		results = pool.starmap(testSolution, zip(range(ts), repeat(args)))
 
 	et = time.time()
-	
+
 	print()
 	print("Completed in", round(et - startTime, 2), "seconds.")
 	time.sleep(1)
 	all_solutions = [r for r in results if r != None]
-	print("Solutions (",len(all_solutions),")")
+	print("Solutions (", len(all_solutions), ")")
 	time.sleep(1)
 	for sol in all_solutions:
 		prettyPrint(sol, wordsSerialized)
 
-	### Duplicating the method from above, but now solving with the full wordlist.
-	if len(all_solutions) == 0:
-		print("Failed to solve using the reduced list.  Trying again with everything!")
-		import_wordLists(False)
-		import_grid()
-		serialize_words()
-		find_overlaps()
-		handleWordLengths()
-		handleLetters()
-		cullWordlist()
-
-		print("Permutations to test:",
-					"{:,}".format(totalSolutions(wordsSerialized, wordLists)))
-
-
-		with multiprocessing.Pool() as pool: 
-			ts = totalSolutions(wordsSerialized, wordLists)
-			args = (wordsSerialized, wordLists, letterDict,overlaps,overlappingWords)
-			results = pool.starmap(testSolution, zip(range(ts), repeat(args)))
-
-		et = time.time()
-		
-		print()
-		print("Completed in", round(et - startTime, 2), "seconds.")
-		time.sleep(1)
-		all_solutions = [r for r in results if r != None]
-		print("Solutions (",len(all_solutions),")")
-		time.sleep(1)
-		for sol in all_solutions:
-			prettyPrint(sol, wordsSerialized)
-		
-	### End chunk of duplicated code.  Now we can assume all_solutions has something in it.
-
-
-	
 	sbsw = {}
 	for sol in all_solutions:
 		if sol[0] in sbsw:
@@ -590,42 +557,70 @@ if __name__ == "__main__":
 		else:
 			sbsw[sol[0]] = [sol]
 	print()
-	
 
-	for key,value in sbsw.items():
+	for key, value in sbsw.items():
 		print(key.upper())
 		for sol in value:
-			print('\t\t',sol)
+			print('\t\t', sol)
 		print()
 
-	emojiGrid(et-startTime)
+	emojiGrid(et - startTime)
 
 	print("Scoring solutions by likelihood of comprising theme answers")
 	with multiprocessing.Pool() as p:
-		scores = p.starmap(solutions_cached.score_solution,zip(all_solutions,repeat(wordLists)))
-	
+		scores = p.starmap(solutions_cached.score_solution,
+		                   zip(all_solutions, repeat(wordLists)))
+
 	scoredSolutions = {}
 	solutionDefWords = {}
-	for i,sol in enumerate(all_solutions):
+	for i, sol in enumerate(all_solutions):
 		scoredSolutions[str(sol)] = scores[i][0]
 		solutionDefWords[str(sol)] = scores[i][1]
 
 	print()
-	
 
-	sortedSolutions = sorted( ((v,k) for k,v in scoredSolutions.items()), reverse=True)
+	sortedSolutions = sorted(((v, k) for k, v in scoredSolutions.items()),
+	                         reverse=True)
 	for s in sortedSolutions:
-		print(str(round(s[0],2))+":\t",end='')
+		print(str(round(s[0], 2)) + ":\t", end='')
 		solStrWords = s[1].strip('][').split(', ')
 		olWords = solutionDefWords[s[1]]
 		for w in solStrWords[:-1]:
-			print(w.upper().strip("'") +', ',end = '')
-		print(solStrWords[-1].upper().strip("'"), end = '')
-		if len(olWords) >0:
-			print('\t(',end = '')
+			print(w.upper().strip("'") + ', ', end='')
+		print(solStrWords[-1].upper().strip("'"), end='')
+		if len(olWords) > 0:
+			print('\t(', end='')
 			for ww in olWords[:-1]:
-				print (ww,end=', ')
-			print(olWords[-1],end=")")
+				print(ww, end=', ')
+			print(olWords[-1], end=")")
 		print()
 
+	if len(sortedSolutions) == 0:
+		print("No solutions found! Try again with --full to use the full wordlist.")
+		exit()
+
 	print("Best Guess:", max(sortedSolutions, key=itemgetter(0))[1])
+	print("Solution found from among", totalSolutions(wordsSerialized, wordLists),
+	      "permutations and", len(all_solutions), "solutions.")
+
+	with multiprocessing.Pool() as p:
+		scrabbleScores = p.map(solutions_cached.scrabble_score_solution,
+		                       all_solutions)
+
+	scrabbledSolutions = {}
+	for i, sol in enumerate(all_solutions):
+		scrabbledSolutions[str(sol)] = scrabbleScores[i]
+
+	print()
+
+	sortedSolutions = sorted(((v, k) for k, v in scrabbledSolutions.items()),
+	                         reverse=True)
+	for s in sortedSolutions:
+		print(str(round(s[0], 2)) + ":\t", end='')
+		solStrWords = s[1].strip('][').split(', ')
+		for w in solStrWords[:-1]:
+			print(w.upper().strip("'") + ', ', end='')
+		print(solStrWords[-1].upper().strip("'"))
+		
+	print("Best Guess (Scrabble Rules):", max(scrabbledSolutions, key=itemgetter(0))[1])
+	
