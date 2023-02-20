@@ -1,3 +1,6 @@
+## This is just a one-time-use utility to import words and sort them by lengths for the solver.
+## Not used for the actual solving at all. 
+
 wbl = {2: {}, 3:{}, 4:{}, 5:{},6:{}}
 
 all = ["the",
