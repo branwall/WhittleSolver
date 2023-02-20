@@ -622,5 +622,5 @@ if __name__ == "__main__":
 			print(w.upper().strip("'") + ', ', end='')
 		print(solStrWords[-1].upper().strip("'"))
 		
-	print("Best Guess (Scrabble Rules):", max(scrabbledSolutions, key=itemgetter(0))[1])
+	print("Best Guess (Scrabble Rules):", max(sortedSolutions, key=itemgetter(0))[1])
 	
