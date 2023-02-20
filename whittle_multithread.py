@@ -10,7 +10,16 @@ import time
 import solutions_cached
 
 # -------------------------
-# Open the dictionary, set up filters to sort by length
+# This code solves [Whittle](https://whittlegame.com) by brute force.
+# It takes a grid (pattern of playable vs. unplayable squares), determines
+# where "words" go (i.e., contiguous playable squares in a straight line),
+# and tests every permutation of dictionary words that could fit in the "word"
+# of appropriate length.  Finally, it scores them (using solutions_cached.py) by
+# number of overlapping words in dictionary definitions, to predict the likelihood
+# that a given "solution" (set of required number of words) is the theme answer.
+#
+#
+# Sorry it's all in one long python file!
 # -------------------------
 
 grid = []
@@ -36,6 +45,13 @@ startTime = time.time()
 
 
 def import_wordLists(reduced=True):
+	"""Opens the dictionary, saves to Wordlists.
+
+	Args:
+			reduced (bool, optional): Whether to use the reduced wordlists (if False, uses the full 
+			wordlist, which is much longer and will require much more time and memory to compute). 
+			Defaults to True.
+	"""
 	prepend = 'reduced' if reduced else ''
 	global wordLists
 	with open(prepend + '2.json') as wol2:
@@ -59,7 +75,7 @@ def inputProcess():
 	"""Receives one line of grid as input and checks for validity.
 
 	Returns:
-			Formatted string (or 'LAST') when input was valid. Else, returns False.
+			Formatted string like 'XOXXO' (or 'LAST') when input was valid. Else, returns False.
 	"""
 	i = input().upper()
 	if i == "LAST":
@@ -71,7 +87,7 @@ def inputProcess():
 	return (i)
 
 
-def get_obj_from_file(letters=False):
+def getObjFromFile(letters=False):
 	"""Returns the last used grid or set of letters.
 
 	Args:
@@ -118,14 +134,14 @@ def save_obj_to_file(obj, letters=False):
 
 
 def import_grid():
-	"""Gets a grid via user input or file, writes it to globals.
+	"""Gets a grid via user input or a file; writes it to globals.
 
-	If user enters "last", it will pull from file.  Else, reads user input to format and serialize the grid.
+	If user enters "last", it will pull from file.  
+	Else, reads user input to format and serialize the grid.
 	"""
 	global grid, gridSerialized
-	print(
-	    'Enter grid, one line at a time, or enter "LAST" to use a the grid and letters you entered previously.'
-	)
+	print('Enter grid, one line at a time, or enter "LAST" to ' +
+	      'use a the grid and letters you entered previously.')
 	while grid == []:
 		print(
 		    "Use an o, O, or 0 for playable spaces.  Use an x or X for blocked spaces."
@@ -133,7 +149,7 @@ def import_grid():
 		for n in range(6):
 			i = inputProcess()
 			if i == "LAST":
-				grid = get_obj_from_file()
+				grid = getObjFromFile()
 				if grid == None:
 					grid = []
 					break
@@ -152,14 +168,40 @@ def import_grid():
 
 
 def nextHCoord(coord):
+	"""Increments the coordinate in the horizontal direction.
+
+	Args:
+			coord (tuple): The coordinate to increment (2-element tuple of integers)
+
+	Returns:
+			Coordinate: incremented coordinate.  Note: Does not check boundaries.
+	"""
 	return (coord[0], coord[1] + 1)
 
 
 def nextVCoord(coord):
+	"""Increments the coordinate in the vertical direction.
+
+	Args:
+			coord (tuple): The coordinate to increment (2-element tuple of integers)
+
+	Returns:
+			Coordinate: incremented coordinate.  Note: Does not check boundaries.
+	"""
 	return (coord[0] + 1, coord[1])
 
 
 def inside(coord, wordCoords):
+	"""Tests whether a coordinate falls within the range of coordinates that defines a 'word'
+
+	Args:
+			coord (tuple(int,int)): The coordinate to test for inclusion
+			wordCoords (tuple(coord,coord)): The word (coordinate pair for start & end letter)
+			to check against.
+
+	Returns:
+			bool: Whether the coordinate is inside the word.
+	"""
 	startCoord = wordCoords[0]
 	endCoord = wordCoords[1]
 	return (coord[0] >= startCoord[0] and coord[1] >= startCoord[1]
@@ -167,6 +209,15 @@ def inside(coord, wordCoords):
 
 
 def alreadyCaputred(coord, listOfWords):
+	"""Tests whether we've already looked at this coordinate to determine words from grid.
+
+	Args:
+			coord (tuple(int,int)): The coordinate to check for already being caputred
+			listOfWords ([tuple(coord,coord)]): The list of words we've already determined to exist.
+
+	Returns:
+			bool: Whether this coord has been seen already.
+	"""
 	for word in listOfWords:
 		if inside(coord, word):
 			return True
@@ -174,6 +225,21 @@ def alreadyCaputred(coord, listOfWords):
 
 
 def serialize_words():
+	"""Put the words in order.
+
+	Using global variables, reads the serialized grid and determines the order of words.
+	Horizontal words come first (from top to bottom), followed by vertical words sorted by highest 
+	point in the word, with ties broken by left-to-right.
+
+	Example:
+  - - - - T
+	F - - - H 
+	O - - - R
+	U - - - E 
+	R - O N E 
+	- T W O -
+
+	"""
 	global wordsSerialized, gridSerialized, wordsSerializedHorizontal, wordsSerializedVertical
 
 	for coord in gridSerialized:
@@ -202,17 +268,25 @@ def serialize_words():
 def find_overlaps():
 	"""Returns a list of grid coordinates that are part of more than one word.
 
-	Using the global grid and word variables (where "word" refers to a contiguous chunk of playable squares),
-	walks through every playable square and sees whether it belongs to more than one word.  If so, there are overlapping words,
-	and both words need to be checked at this index when testing a potential solution.
+	Using the global grid and word variables 
+	(where "word" refers to a contiguous chunk of playable squares),
+	walks through every playable square and sees whether it belongs to more than one word.  
+	
+	If so, there are overlapping words, and both words need to be
+	checked at this index when testing a potential solution.
 
-	Returns (Index of Word A in which the coord appears, the index within Word A in which that letter appears,
-					Index of Word B in which the coord appears, the index within Word B in which that letter appears)
+	Returns Tuple(int, int, int, int):
+	(Index of Word A in which the coord appears;
+	Index within Word A in which that letter appears;
+	Index of Word B in which the coord appears;
+	Index within Word B in which that letter appears)
 
 	Raises:
-			Exception when it can't find the word belonging to a given coordinate - shouldn't ever occur with a valid grid.
+			Exception when it can't find the word belonging to a given coordinate.
+			Shouldn't ever occur with a valid grid.
 	"""
-	global overlaps, overlappingWords, gridSerialized, wordsSerializedVertical, wordsSerializedHorizontal, overlaps, wordsSerialized
+	global overlaps, overlappingWords, gridSerialized, wordsSerializedVertical
+	global wordsSerializedHorizontal, overlaps, wordsSerialized
 	for coord in gridSerialized:
 		if (alreadyCaputred(coord, wordsSerializedVertical)
 		    and alreadyCaputred(coord, wordsSerializedHorizontal)):
@@ -246,6 +320,15 @@ def find_overlaps():
 
 
 def fastCheckOverlap(solution, overlappingWords):
+	"""Given a potential solution, checks the spots where letters overlap to ensure equality.
+
+	Args:
+			solution ([str]): The list of words in the solution
+			overlappingWords ([tuple(int,int,int,int)]): List of overlaps generated by find_overlaps()
+
+	Returns:
+			 bool: Whether all overlapping letters are equal (as is required for valid solution)
+	"""
 	for ol in overlappingWords:
 		wordA = ol[0]
 		wordB = ol[2]
@@ -285,7 +368,7 @@ def handleWordLengths():
 def handleLetters():
 	global letters, gridSerialized, letterDict
 	if pulledFromFile:
-		letters = get_obj_from_file(True)
+		letters = getObjFromFile(True)
 	else:
 		while letters == []:
 			ls = input("Enter usable letters\n").upper()
@@ -621,6 +704,6 @@ if __name__ == "__main__":
 		for w in solStrWords[:-1]:
 			print(w.upper().strip("'") + ', ', end='')
 		print(solStrWords[-1].upper().strip("'"))
-		
-	print("Best Guess (Scrabble Rules):", max(sortedSolutions, key=itemgetter(0))[1])
-	
+
+	print("Best Guess (Scrabble Rules):",
+	      max(sortedSolutions, key=itemgetter(0))[1])
